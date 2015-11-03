@@ -1,0 +1,5 @@
+CROSS_COMPILE := $(CROSS_COMPILE_TA)
+BINARY = 968c7511-9ace-43fe-8a78faf988096de5
+DEBUG = 0
+include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
+
