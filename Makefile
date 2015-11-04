@@ -230,7 +230,8 @@ build-bl33 $(BL33)::
 	$(ECHO) '  BUILD   $@ "$(PATH_CROSS_COMPILE)"'
 	$(Q)set -e ; cd u-boot ; \
 	    $(MAKE) s5p6818_arm64_drone_config ; \
-	    $(MAKE)
+	    $(MAKE) CROSS_COMPILE="$(CROSS_COMPILE)"
+	$(Q)touch ${BL33}
 
 clean-bl33:
 	$(ECHO) '  CLEAN   $@'
@@ -257,7 +258,6 @@ FIP = $(ATF)/fip.bin
 
 ARMTF_FLAGS := PLAT=nxp5430 DEBUG=$(ATF_DEBUG)
 #ARMTF_FLAGS += LOG_LEVEL=40
-#ARMTF_EXPORTS := NEED_BL30=yes BL30=$(PWD)/$(BL30) BL33=$(PWD)/$(BL33) #CFLAGS=""
 ARMTF_EXPORTS := NEED_BL30=no BL30=$(PWD)/$(BL30) BL33=$(PWD)/$(BL33) #CFLAGS=""
 ifneq (,$(BL32))
 ARMTF_FLAGS += SPD=opteed
@@ -295,9 +295,9 @@ endif
 ifneq ($(filter all build-bl32,$(MAKECMDGOALS)),)
 tf-deps += build-bl32
 endif
-#ifneq ($(filter all build-bl33,$(MAKECMDGOALS)),)
-#tf-deps += build-bl33
-#endif
+ifneq ($(filter all build-bl33,$(MAKECMDGOALS)),)
+tf-deps += build-bl33
+endif
 
 .PHONY: build-fip
 build-fip:: $(tf-deps)
