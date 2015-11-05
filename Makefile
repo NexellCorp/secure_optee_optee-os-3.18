@@ -362,7 +362,6 @@ endif
 build-linux:: $(linux-build-deps) $(aarch64-linux-gnu-gcc)
 build-linux $(LINUX):: linux/.config
 	$(ECHO) '  BUILD   build-linux'
-	$(Q)if [ ! -f $(INITRAMFS) ] ; then touch $(INITRAMFS) ; fi
 	$(Q)flock .linuxbuildinprogress $(MAKE) -C linux ARCH=arm64 LOCALVERSION= Image
 
 build-dtb:: $(aarch64-linux-gnu-gcc)
@@ -388,7 +387,7 @@ clean-linux-dtb:
 # Initramfs
 #
 
-INITRAMFS = initramfs.cpio.gz
+INITRAMFS = initramfs.gz
 
 ifneq ($(filter all build-optee-linuxdriver,$(MAKECMDGOALS)),)
 initramfs-deps += build-optee-linuxdriver
@@ -408,7 +407,7 @@ endif
 
 .PHONY: build-initramfs
 build-initramfs:: $(initramfs-deps)
-build-initramfs $(INITRAMFS):: ./build_initramfs.sh
+build-initramfs:: ./build_initramfs.sh
 	$(ECHO) "  GEN    $(INITRAMFS)"
 	$(Q)./build_initramfs.sh
 

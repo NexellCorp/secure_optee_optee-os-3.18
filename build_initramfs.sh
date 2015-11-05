@@ -104,3 +104,4 @@ sudo umount ${MOUNT_DIR}
 sudo gzip -f ./ramdisk 
 sudo rm -rf ${MOUNT_DIR}
 cp ramdisk.gz ./${INITRAMFS} 
+rm ramdisk.gz
