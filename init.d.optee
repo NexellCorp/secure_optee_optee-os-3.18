@@ -8,7 +8,8 @@ case "$1" in
     start)
 	if [ -e /bin/tee-supplicant -a -e /lib/modules/`uname -r`/optee_armtz.ko ]; then
 		echo "Starting OP-TEE..."
-		modprobe optee_armtz
+		insmod /lib/modules/`uname -r`/optee.ko
+		insmod /lib/modules/`uname -r`/optee_armtz.ko
 		count=20
 		while [ ! -e /dev/opteearmtz00 -a $count -ne 0 ]
 		do
@@ -25,6 +26,7 @@ case "$1" in
         ;;
     stop)
 	killall tee-supplicant
-	modprobe -r optee_armtz optee
+	rmmod /lib/modules/`uname -r`/optee_armtz.ko
+	rmmod /lib/modules/`uname -r`/optee.ko
 	;;
 esac

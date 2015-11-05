@@ -20,16 +20,15 @@ _all:
 	$(Q)if [ ! -L u-boot ] ; then ln -s ../../bootloader/u-boot-2014.07 u-boot ; fi
 	$(Q)$(MAKE) all $(filter-out _all,$(MAKECMDGOALS))
 
-all: build-lloader build-fip build-boot-img build-nvme build-bl30 build-ptable
+all: build-lloader build-fip build-linux build-initramfs
+#all: build-lloader build-fip build-boot-img build-nvme build-ptable
 
-clean:
-	$(Q)if [ ! -L linux ] ; then ln -s ../../kernel/kernel-3.18 linux ; fi
-	$(Q)if [ ! -L u-boot ] ; then ln -s ../../bootloader/u-boot-2014.07 u-boot ; fi
 clean: clean-bl1-bl2-bl31-fip clean-bl33 clean-lloader-ptable
 clean: clean-linux-dtb clean-boot-img clean-initramfs clean-optee-linuxdriver
 clean: clean-optee-client clean-bl32 clean-aes-perf clean-helloworld
 
-cleaner: clean cleaner-nvme cleaner-bl30 cleaner-aarch64-gcc cleaner-arm-gcc cleaner-busybox
+cleaner: clean cleaner-nvme cleaner-aarch64-gcc cleaner-arm-gcc cleaner-busybox
+#cleaner: clean cleaner-nvme cleaner-bl30 cleaner-aarch64-gcc cleaner-arm-gcc cleaner-busybox
 
 distclean: cleaner distclean-aarch64-gcc distclean-arm-gcc distclean-busybox
 
@@ -101,7 +100,8 @@ BUSYBOX_DIR = $(BUSYBOX_TARBALL:.tar.bz2=)
 #
 # Aarch64 toolchain
 #
-AARCH64_GCC_URL = https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux.tar.xz
+#AARCH64_GCC_URL = https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux.tar.xz
+AARCH64_GCC_URL = https://releases.linaro.org/14.11/components/toolchain/binaries/aarch64-linux-gnu/gcc-linaro-4.9-2014.11-x86_64_aarch64-linux-gnu.tar.xz
 AARCH64_GCC_TARBALL = $(call filename,$(AARCH64_GCC_URL))
 AARCH64_GCC_DIR = $(AARCH64_GCC_TARBALL:.tar.xz=)
 # If you don't want to download the aarch64 toolchain, comment out
@@ -114,7 +114,8 @@ export PATH_CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin:$
 #
 # Aarch32 toolchain
 #
-ARM_GCC_URL = https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux.tar.xz
+#ARM_GCC_URL = https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux.tar.xz
+ARM_GCC_URL = https://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz
 ARM_GCC_TARBALL = $(call filename,$(ARM_GCC_URL))
 ARM_GCC_DIR = $(ARM_GCC_TARBALL:.tar.xz=)
 # If you don't want to download the aarch32 toolchain, comment out
@@ -286,9 +287,6 @@ build-bl31 $(BL31): $(aarch64-linux-gnu-gcc)
 ifneq ($(filter all build-bl2,$(MAKECMDGOALS)),)
 tf-deps += build-bl2
 endif
-ifneq ($(filter all build-bl30,$(MAKECMDGOALS)),)
-tf-deps += build-bl30
-endif
 ifneq ($(filter all build-bl31,$(MAKECMDGOALS)),)
 tf-deps += build-bl31
 endif
@@ -356,8 +354,12 @@ DTB2 = linux/arch/arm64/boot/dts/$(DTB)
 # Config fragments to merge with the default kernel configuration
 KCONFIGS += linux/arch/arm64/configs/s5p6818_asb_seclinux_defconfig
 
+ifneq ($(filter all build-linux,$(MAKECMDGOALS)),)
+linux-build-deps += build-dtb
+endif
+
 .PHONY: build-linux
-build-linux:: $(aarch64-linux-gnu-gcc)
+build-linux:: $(linux-build-deps) $(aarch64-linux-gnu-gcc)
 build-linux $(LINUX):: linux/.config
 	$(ECHO) '  BUILD   build-linux'
 	$(Q)if [ ! -f $(INITRAMFS) ] ; then touch $(INITRAMFS) ; fi
@@ -383,41 +385,6 @@ clean-linux-dtb:
 	$(Q)rm -f .linuxbuildinprogress
 
 #
-# EFI boot partition
-#
-
-BOOT-IMG = boot.img
-
-ifneq ($(filter all build-linux,$(MAKECMDGOALS)),)
-boot-img-deps += build-linux
-endif
-ifneq ($(filter all build-dtb,$(MAKECMDGOALS)),)
-boot-img-deps += build-dtb
-endif
-ifneq ($(filter all build-initramfs,$(MAKECMDGOALS)),)
-boot-img-deps += build-initramfs
-endif
-
-.PHONY: build-boot-img
-build-boot-img:: $(boot-img-deps)
-build-boot-img $(BOOT-IMG)::
-	$(ECHO) '  GEN    $(BOOT-IMG)'
-	$(Q)sudo -p "[sudo] Password:" true
-	$(Q)if [ -d .tmpbootimg ] ; then sudo umount .tmpbootimg ; sudo rm -rf .tmpbootimg ; fi
-	$(Q)mkdir -p .tmpbootimg
-	$(Q)dd if=/dev/zero of=$(BOOT-IMG) bs=512 count=131072 status=none
-	$(Q)sudo mkfs.fat -n "BOOT IMG" $(BOOT-IMG) >/dev/null
-	$(Q)sudo mount -o loop,rw,sync $(BOOT-IMG) .tmpbootimg
-	$(Q)sudo cp $(LINUX) $(DTB2) .tmpbootimg
-	$(Q)sudo cp $(INITRAMFS) .tmpbootimg/initrd.img
-	$(Q)sudo umount .tmpbootimg
-	$(Q)sudo rm -rf .tmpbootimg
-
-clean-boot-img:
-	$(ECHO) '  CLEAN   $@'
-	$(Q)rm -f $(BOOT-IMG)
-
-#
 # Initramfs
 #
 
@@ -441,22 +408,9 @@ endif
 
 .PHONY: build-initramfs
 build-initramfs:: $(initramfs-deps)
-build-initramfs $(INITRAMFS):: gen_rootfs/filelist-all.txt linux/usr/gen_init_cpio
+build-initramfs $(INITRAMFS):: ./build_initramfs.sh
 	$(ECHO) "  GEN    $(INITRAMFS)"
-	$(Q)(cd gen_rootfs && ../linux/usr/gen_init_cpio filelist-all.txt) | gzip >$(INITRAMFS)
-
-gen_rootfs/filelist-all.txt: gen_rootfs/filelist-final.txt initramfs-add-files.txt
-	$(ECHO) '  GEN    $@'
-	$(Q)cat gen_rootfs/filelist-final.txt | sed '/fbtest/d' >$@
-	$(Q)export KERNEL_VERSION=`cd linux ; $(MAKE) --no-print-directory -s kernelversion` ;\
-	    export TOP=$(PWD) ; \
-	    $(expand-env-var) <initramfs-add-files.txt >>$@
-
-gen_rootfs/filelist-final.txt: .busybox $(aarch64-linux-gnu-gcc)
-	$(ECHO) '  GEN    gen_rootfs/filelist-final.txt'
-	$(Q)cd gen_rootfs ; \
-	    export CC_DIR=$(PWD)/toolchains/$(AARCH64_GCC_DIR) ; \
-	    ./generate-cpio-rootfs.sh nxp5430 nocpio
+	$(Q)./build_initramfs.sh
 
 clean-initramfs:
 	$(ECHO) "  CLEAN  $@"
@@ -478,20 +432,6 @@ $(NVME):
 cleaner-nvme:
 	$(ECHO) '  CLEANER $(NVME)'
 	$(Q)rm -f $(NVME)
-
-#
-# Download mcuimage.bin (packaged as BL30 in FIP)
-#
-
-.PHONY: build-bl30
-build-bl30: $(BL30)
-
-$(BL30):
-	$(CURL) https://builds.96boards.org/releases/hikey/linaro/binaries/15.05/mcuimage.bin -o $(BL30)
-
-cleaner-bl30:
-	$(ECHO) '  CLEANER $(BL30)'
-	$(Q)rm -f $(BL30)
 
 #
 # OP-TEE Linux driver
@@ -557,7 +497,7 @@ optee-os-flags += CFG_TEE_CORE_LOG_LEVEL=2 # 0=none 1=err 2=info 3=debug 4=flow
 # or with:
 #   'arm-linux-gnueabihf-gcc (Linaro GCC 2014.11) 4.9.3 20141031 (prerelease)'
 # and the problem disappears.
-OPTEE_64BIT ?= 0
+OPTEE_64BIT ?= 1
 ifeq ($(OPTEE_64BIT),1)
 optee-os-flags += CFG_ARM64_core=y CROSS_COMPILE_core="$(CROSS_COMPILE)"
 endif
