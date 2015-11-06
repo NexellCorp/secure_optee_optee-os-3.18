@@ -150,15 +150,15 @@ endef
 
 .PHONY: build-bl1
 build-bl1 $(BL1): $(aarch64-linux-gnu-gcc)
-	$(call arm-tf-make, bl1)
+	$(call arm-tf-make, bl1) CROSS_COMPILE="$(CROSS_COMPILE)"
 
 .PHONY: build-bl2
 build-bl2 $(BL2): $(aarch64-linux-gnu-gcc)
-	$(call arm-tf-make, bl2)
+	$(call arm-tf-make, bl2) CROSS_COMPILE="$(CROSS_COMPILE)"
 
 .PHONY: build-bl31
 build-bl31 $(BL31): $(aarch64-linux-gnu-gcc)
-	$(call arm-tf-make, bl31)
+	$(call arm-tf-make, bl31) CROSS_COMPILE="$(CROSS_COMPILE)"
 
 
 ifneq ($(filter all build-bl2,$(MAKECMDGOALS)),)
@@ -289,22 +289,6 @@ clean-initramfs:
 	$(Q)rm -f $(INITRAMFS)
 
 #
-# Download nvme.img
-#
-
-NVME = nvme.img
-
-.PHONY: build-nvme
-build-nvme: $(NVME)
-
-$(NVME):
-	$(CURL) https://builds.96boards.org/releases/hikey/linaro/binaries/15.05/nvme.img -o $(NVME)
-
-cleaner-nvme:
-	$(ECHO) '  CLEANER $(NVME)'
-	$(Q)rm -f $(NVME)
-
-#
 # OP-TEE Linux driver
 #
 
@@ -340,7 +324,7 @@ clean-optee-linuxdriver:
 .PHONY: build-optee-client
 build-optee-client: $(aarch64-linux-gnu-gcc)
 	$(ECHO) '  BUILD   $@'
-	$(Q)$(MAKE) -C optee_client
+	$(Q)$(MAKE) -C optee_client CROSS_COMPILE="$(CROSS_COMPILE)"
 
 clean-optee-client:
 	$(ECHO) '  CLEAN   $@'
