@@ -25,13 +25,19 @@ all: build-lloader build-fip build-linux build-initramfs
 pre_clean:
 	$(Q)if [ ! -L linux ] ; then ln -s ../../kernel/kernel-3.18 linux ; fi
 	$(Q)if [ ! -L u-boot ] ; then ln -s ../../bootloader/u-boot-2014.07 u-boot ; fi
+
+post_clean:
+	$(Q)if [ -L linux ] ; then rm linux ; fi
+	$(Q)if [ -L u-boot ] ; then rm u-boot ; fi
+	$(Q)if [ -L buildroot ] ; then rm buildroot ; fi
+
 clean: clean-bl1-bl2-bl31-fip clean-bl33 clean-lloader
 clean: clean-linux-dtb clean-initramfs clean-optee-linuxdriver
 clean: clean-optee-client clean-bl32 clean-aes-perf clean-helloworld
 
-cleaner: pre_clean clean cleaner-nvme cleaner-aarch64-gcc cleaner-arm-gcc 
+cleaner: pre_clean clean post_clean
 
-distclean: cleaner distclean-aarch64-gcc distclean-arm-gcc
+distclean: cleaner
 
 help:
 	@echo "Makefile for NXP5430-drone board u-boot firmware/kernel"
@@ -79,80 +85,16 @@ endef
 #
 # Aarch64 toolchain
 #
-AARCH64_GCC_PREFIX = aarch64-linux-gnu
-AARCH64_GCC_URL = https://releases.linaro.org/14.11/components/toolchain/binaries/aarch64-linux-gnu/gcc-linaro-4.9-2014.11-x86_64_aarch64-linux-gnu.tar.xz
-AARCH64_GCC_TARBALL = $(call filename,$(AARCH64_GCC_URL))
-AARCH64_GCC_DIR = $(AARCH64_GCC_TARBALL:.tar.xz=)
 # If you don't want to download the aarch64 toolchain, comment out
 # the next line and set CROSS_COMPILE to your compiler command
-aarch64-linux-gnu-gcc := toolchains/$(AARCH64_GCC_DIR)
-#export CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin/aarch64-linux-gnu-
-export CROSS_COMPILE ?= $(CCACHE)aarch64-linux-gnu-
-export PATH_CROSS_COMPILE ?= $(PATH)
-#export PATH_CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin:$(PATH)
+CROSS_COMPILE ?= $(CCACHE)aarch64-linux-gnu-
 
 #
 # Aarch32 toolchain
 #
-ARM_GCC_PREFIX = arm-linux-gnueabihf
-ARM_GCC_URL = https://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz
-ARM_GCC_TARBALL = $(call filename,$(ARM_GCC_URL))
-ARM_GCC_DIR = $(ARM_GCC_TARBALL:.tar.xz=)
 # If you don't want to download the aarch32 toolchain, comment out
 # the next line and set CROSS_COMPILE32 to your compiler command
-arm-linux-gnueabihf-gcc := toolchains/$(ARM_GCC_DIR)
-CROSS_COMPILE32 ?= $(CCACHE)$(PWD)/toolchains/$(ARM_GCC_DIR)/bin/arm-linux-gnueabihf-
-#CROSS_COMPILE32 ?= $(CCACHE)arm-linux-gnueabihf-
-
-#
-# Download rules
-#
-
-downloads/$(AARCH64_GCC_TARBALL):
-	$(Q)if [ ! -e $(which ${AARCH64_GCC_PREFIX}-gcc > /dev/null) ] ; then \
-		echo '  CURL    $@'; \
-		$(CURL) $(AARCH64_GCC_URL) -o $@; \
-	fi
-
-toolchains/$(AARCH64_GCC_DIR): downloads/$(AARCH64_GCC_TARBALL)
-	$(Q)if [ ! -e $(which ${AARCH64_GCC_PREFIX}-gcc > /dev/null) ] ; then \
-		echo '  TAR     $@'; \
-		rm -rf toolchains/$(AARCH64_GCC_DIR); \
-		cd toolchains && tar xf ../downloads/$(AARCH64_GCC_TARBALL); \
-		touch $@; \
-	fi
-
-cleaner-aarch64-gcc:
-	$(ECHO) '  CLEANER $@'
-#	$(Q)rm -rf toolchains/$(AARCH64_GCC_DIR)
-
-distclean-aarch64-gcc:
-	$(ECHO) '  DISTCL  $@'
-#	$(Q)rm -f downloads/$(AARCH64_GCC_TARBALL)
-
-downloads/$(ARM_GCC_TARBALL):
-	$(Q)if [ -e $(which ${ARM_GCC_PREFIX}-gcc > /dev/null) ] ; then \
-		if [ ! -d toolchains/$(ARM_GCC_DIR) ] ; then \
-			echo '  CURL    $@'; \
-			$(CURL) $(ARM_GCC_URL) -o $@; \
-		fi ; \
-	fi
-
-toolchains/$(ARM_GCC_DIR): downloads/$(ARM_GCC_TARBALL)
-	$(Q)if [ ! -d toolchains/$(ARM_GCC_DIR) ] ; then \
-		echo '  TAR     $@'; \
-		rm -rf toolchains/$(ARM_GCC_DIR); \
-		cd toolchains && tar xf ../downloads/$(ARM_GCC_TARBALL); \
-		touch $@; \
-	fi
-
-cleaner-arm-gcc:
-	$(ECHO) '  CLEANER $@'
-#	$(Q)rm -rf toolchains/$(ARM_GCC_DIR)
-
-distclean-arm-gcc:
-	$(ECHO) '  DISTCL  $@'
-#	$(Q)rm -f downloads/$(ARM_GCC_TARBALL)
+CROSS_COMPILE32 ?= $(CCACHE)arm-linux-gnueabihf-
 
 
 #
@@ -164,7 +106,7 @@ BL33 = u-boot/u-boot.bin
 .PHONY: build-bl33
 build-bl33:: $(aarch64-linux-gnu-gcc)
 build-bl33 $(BL33)::
-	$(ECHO) '  BUILD   $@ "$(PATH_CROSS_COMPILE)"'
+	$(ECHO) '  BUILD   $@'
 	$(Q)set -e ; cd u-boot ; \
 	    $(MAKE) s5p6818_arm64_drone_config ; \
 	    $(MAKE) CROSS_COMPILE="$(CROSS_COMPILE)"
