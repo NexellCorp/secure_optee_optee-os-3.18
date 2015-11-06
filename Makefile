@@ -21,19 +21,17 @@ _all:
 	$(Q)$(MAKE) all $(filter-out _all,$(MAKECMDGOALS))
 
 all: build-lloader build-fip build-linux build-initramfs
-#all: build-lloader build-fip build-boot-img build-nvme build-ptable
 
 pre_clean:
 	$(Q)if [ ! -L linux ] ; then ln -s ../../kernel/kernel-3.18 linux ; fi
 	$(Q)if [ ! -L u-boot ] ; then ln -s ../../bootloader/u-boot-2014.07 u-boot ; fi
-clean: clean-bl1-bl2-bl31-fip clean-bl33 clean-lloader-ptable
-clean: clean-linux-dtb clean-boot-img clean-initramfs clean-optee-linuxdriver
+clean: clean-bl1-bl2-bl31-fip clean-bl33 clean-lloader
+clean: clean-linux-dtb clean-initramfs clean-optee-linuxdriver
 clean: clean-optee-client clean-bl32 clean-aes-perf clean-helloworld
 
-cleaner: pre_clean clean cleaner-nvme cleaner-aarch64-gcc cleaner-arm-gcc cleaner-busybox
-#cleaner: clean cleaner-nvme cleaner-bl30 cleaner-aarch64-gcc cleaner-arm-gcc cleaner-busybox
+cleaner: pre_clean clean cleaner-nvme cleaner-aarch64-gcc cleaner-arm-gcc 
 
-distclean: cleaner distclean-aarch64-gcc distclean-arm-gcc distclean-busybox
+distclean: cleaner distclean-aarch64-gcc distclean-arm-gcc
 
 help:
 	@echo "Makefile for NXP5430-drone board u-boot firmware/kernel"
@@ -42,10 +40,8 @@ help:
 	@echo "  LLOADER = $(LLOADER) with:"
 	@echo "      [BL1 = $(BL1)]"
 	@echo "      [l-loader/*.S]"
-	@echo "  PTABLE = $(PTABLE)"
 	@echo "  FIP = $(FIP) with:"
 	@echo "      [BL2 = $(BL2)]"
-	@echo "      [BL30 = $(BL30)]"
 	@echo "      [BL31 = $(BL31)]"
 	@echo "      [BL32 = $(BL32)]"
 	@echo "      [BL33 = $(BL33)]"
@@ -80,28 +76,25 @@ define expand-env-var
 awk '{while(match($$0,"[$$]{[^}]*}")) {var=substr($$0,RSTART+2,RLENGTH -3);gsub("[$$]{"var"}",ENVIRON[var])}}1'
 endef
 
-BUSYBOX_URL = http://busybox.net/downloads/busybox-1.23.0.tar.bz2
-BUSYBOX_TARBALL = $(call filename,$(BUSYBOX_URL))
-BUSYBOX_DIR = $(BUSYBOX_TARBALL:.tar.bz2=)
-
 #
 # Aarch64 toolchain
 #
-#AARCH64_GCC_URL = https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux.tar.xz
+AARCH64_GCC_PREFIX = aarch64-linux-gnu
 AARCH64_GCC_URL = https://releases.linaro.org/14.11/components/toolchain/binaries/aarch64-linux-gnu/gcc-linaro-4.9-2014.11-x86_64_aarch64-linux-gnu.tar.xz
 AARCH64_GCC_TARBALL = $(call filename,$(AARCH64_GCC_URL))
 AARCH64_GCC_DIR = $(AARCH64_GCC_TARBALL:.tar.xz=)
 # If you don't want to download the aarch64 toolchain, comment out
 # the next line and set CROSS_COMPILE to your compiler command
 aarch64-linux-gnu-gcc := toolchains/$(AARCH64_GCC_DIR)
-export CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin/aarch64-linux-gnu-
-#export CROSS_COMPILE ?= $(CCACHE)aarch64-linux-gnu-
-export PATH_CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin:$(PATH)
+#export CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin/aarch64-linux-gnu-
+export CROSS_COMPILE ?= $(CCACHE)aarch64-linux-gnu-
+export PATH_CROSS_COMPILE ?= $(PATH)
+#export PATH_CROSS_COMPILE ?= $(CCACHE)$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin:$(PATH)
 
 #
 # Aarch32 toolchain
 #
-#ARM_GCC_URL = https://releases.linaro.org/14.09/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux.tar.xz
+ARM_GCC_PREFIX = arm-linux-gnueabihf
 ARM_GCC_URL = https://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz
 ARM_GCC_TARBALL = $(call filename,$(ARM_GCC_URL))
 ARM_GCC_DIR = $(ARM_GCC_TARBALL:.tar.xz=)
@@ -116,14 +109,18 @@ CROSS_COMPILE32 ?= $(CCACHE)$(PWD)/toolchains/$(ARM_GCC_DIR)/bin/arm-linux-gnuea
 #
 
 downloads/$(AARCH64_GCC_TARBALL):
-	$(ECHO) '  CURL    $@'
-	$(Q)$(CURL) $(AARCH64_GCC_URL) -o $@
+	$(Q)if [ ! -e $(which ${AARCH64_GCC_PREFIX}-gcc > /dev/null) ] ; then \
+		echo '  CURL    $@'; \
+		$(CURL) $(AARCH64_GCC_URL) -o $@; \
+	fi
 
 toolchains/$(AARCH64_GCC_DIR): downloads/$(AARCH64_GCC_TARBALL)
-	$(ECHO) '  TAR     $@'
-	$(Q)rm -rf toolchains/$(AARCH64_GCC_DIR)
-	$(Q)cd toolchains && tar xf ../downloads/$(AARCH64_GCC_TARBALL)
-	$(Q)touch $@
+	$(Q)if [ ! -e $(which ${AARCH64_GCC_PREFIX}-gcc > /dev/null) ] ; then \
+		echo '  TAR     $@'; \
+		rm -rf toolchains/$(AARCH64_GCC_DIR); \
+		cd toolchains && tar xf ../downloads/$(AARCH64_GCC_TARBALL); \
+		touch $@; \
+	fi
 
 cleaner-aarch64-gcc:
 	$(ECHO) '  CLEANER $@'
@@ -134,14 +131,20 @@ distclean-aarch64-gcc:
 #	$(Q)rm -f downloads/$(AARCH64_GCC_TARBALL)
 
 downloads/$(ARM_GCC_TARBALL):
-	$(ECHO) '  CURL    $@'
-	$(Q)$(CURL) $(ARM_GCC_URL) -o $@
+	$(Q)if [ -e $(which ${ARM_GCC_PREFIX}-gcc > /dev/null) ] ; then \
+		if [ ! -d toolchains/$(ARM_GCC_DIR) ] ; then \
+			echo '  CURL    $@'; \
+			$(CURL) $(ARM_GCC_URL) -o $@; \
+		fi ; \
+	fi
 
 toolchains/$(ARM_GCC_DIR): downloads/$(ARM_GCC_TARBALL)
-	$(ECHO) '  TAR     $@'
-	$(Q)rm -rf toolchains/$(ARM_GCC_DIR)
-	$(Q)cd toolchains && tar xf ../downloads/$(ARM_GCC_TARBALL)
-	$(Q)touch $@
+	$(Q)if [ ! -d toolchains/$(ARM_GCC_DIR) ] ; then \
+		echo '  TAR     $@'; \
+		rm -rf toolchains/$(ARM_GCC_DIR); \
+		cd toolchains && tar xf ../downloads/$(ARM_GCC_TARBALL); \
+		touch $@; \
+	fi
 
 cleaner-arm-gcc:
 	$(ECHO) '  CLEANER $@'
@@ -151,60 +154,6 @@ distclean-arm-gcc:
 	$(ECHO) '  DISTCL  $@'
 #	$(Q)rm -f downloads/$(ARM_GCC_TARBALL)
 
-.busybox: downloads/$(BUSYBOX_TARBALL)
-	$(ECHO) '  TAR     gen_rootfs/busybox'
-	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR) gen_rootfs/busybox
-	$(Q)cd gen_rootfs && tar xf ../downloads/$(BUSYBOX_TARBALL)
-	$(Q)mv gen_rootfs/$(BUSYBOX_DIR) gen_rootfs/busybox
-	$(Q)touch $@
-
-downloads/$(BUSYBOX_TARBALL):
-	$(ECHO) '  CURL    $@'
-	$(Q)$(CURL) $(BUSYBOX_URL) -o $@
-
-cleaner-busybox:
-	$(ECHO) '  CLEANER $@'
-	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR) gen_rootfs/busybox .busybox
-
-distclean-busybox:
-	$(ECHO) '  DISTCL  $@'
-	$(Q)rm -f downloads/$(BUSYBOX_TARBALL)
-
-
-ifeq ($(BL33_UEFI),1)
-#
-# UEFI
-#
-
-BL33 = edk2/Build/HiKey/RELEASE_GCC49/FV/BL33_AP_UEFI.fd
-EDK2_VARS = EDK2_ARCH=AARCH64 EDK2_DSC=HisiPkg/HiKeyPkg/HiKey.dsc EDK2_TOOLCHAIN=GCC49 EDK2_BUILD=RELEASE
-
-.PHONY: build-bl33
-build-bl33:: $(aarch64-linux-gnu-gcc)
-build-bl33 $(BL33):: .edk2basetools
-	$(ECHO) '  BUILD   build-bl33'
-	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CROSS_COMPILE)"' ; \
-	    . edksetup.sh ; \
-	    $(MAKE) -j1 -f HisiPkg/HiKeyPkg/Makefile $(EDK2_VARS)
-	$(Q)touch ${BL33}
-
-clean-bl33: clean-edk2-basetools
-	$(ECHO) '  CLEAN   $@'
-	$(Q)set -e ; cd edk2 ; . edksetup.sh ; \
-	    $(MAKE) -f HisiPkg/HiKeyPkg/Makefile $(EDK2_VARS) clean
-
-.edk2basetools:
-	$(ECHO) '  BUILD   edk2/BaseTools'
-	$(Q)set -e ; cd edk2 ; . edksetup.sh ; \
-	    $(MAKE) -j1 -C BaseTools CC="$(CCACHE)gcc" CXX="$(CCACHE)g++"
-	$(Q)touch $@
-
-clean-edk2-basetools:
-	$(ECHO) '  CLEAN   $@'
-	$(Q)set -e ; cd edk2 ; . edksetup.sh ; \
-	    $(MAKE) -C BaseTools clean
-	$(Q)rm -f .edk2basetools
-else
 
 #
 # U-BOOT
@@ -224,7 +173,6 @@ build-bl33 $(BL33)::
 clean-bl33:
 	$(ECHO) '  CLEAN   $@'
 	$(Q) $(MAKE) -C u-boot clean
-endif
 
 #
 # ARM Trusted Firmware
@@ -320,11 +268,7 @@ build-lloader $(LLOADER)::
 	$(ECHO) '  BUILD   build-lloader'
 	$(Q)$(MAKE) -C l-loader BL1=$(PWD)/$(BL1) CROSS_COMPILE="$(CROSS_COMPILE32)" l-loader.bin
 
-build-ptable $(PTABLE):
-	$(ECHO) '  BUILD   build-ptable'
-	$(Q)$(MAKE) -C l-loader ptable.img
-
-clean-lloader-ptable:
+clean-lloader:
 	$(ECHO) '  CLEAN   $@'
 	$(Q)$(MAKE) -C l-loader clean
 
@@ -336,10 +280,10 @@ clean-lloader-ptable:
 # each time it is run
 
 LINUX = linux/arch/arm64/boot/Image
-DTB = nexell/s5p6818-asb-sec.dtb
+DTB = nexell/s5p6818-asb-optee.dtb
 DTB2 = linux/arch/arm64/boot/dts/$(DTB)
 # Config fragments to merge with the default kernel configuration
-KCONFIGS += linux/arch/arm64/configs/s5p6818_asb_seclinux_defconfig
+KCONFIGS += linux/arch/arm64/configs/s5p6818_asb_optee_linux_defconfig
 
 ifneq ($(filter all build-linux,$(MAKECMDGOALS)),)
 linux-build-deps += build-dtb
