@@ -177,7 +177,7 @@ endif
 .PHONY: build-fip
 build-fip:: $(tf-deps)
 build-fip $(FIP)::
-	$(call arm-tf-make, fip)
+	$(call arm-tf-make, fip) CROSS_COMPILE="$(CROSS_COMPILE)"
 
 clean-bl1-bl2-bl31-fip:
 	$(ECHO) '  CLEAN   edk2/BaseTools'
