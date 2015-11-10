@@ -87,13 +87,6 @@ void bl31_main(void)
 	INFO("BL3-1: Initializing runtime services\n");
 	runtime_svc_init();
 
-#if 0
-	NOTICE("++ %s Step.3\n", __func__);
-
-	/* Clean caches before re-entering normal world */
-	dcsw_op_all(DCCSW);
-#endif
-
 	/*
 	 * All the cold boot actions on the primary cpu are done. We now need to
 	 * decide which is the next image (BL32 or BL33) and how to execute it.
@@ -156,9 +149,7 @@ void bl31_prepare_next_image_entry(void)
 
 	INFO("BL3-1: Preparing for EL3 exit to %s world\n",
 		(image_type == SECURE) ? "secure" : "normal");
-	INFO("BL3-1: Next image address = 0x%llx\n",
-		(unsigned long long) next_image_info->pc);
-	INFO("BL3-1: Next image spsr = 0x%x\n", next_image_info->spsr);
+	print_entry_point_info(next_image_info);
 	cm_init_my_context(next_image_info);
 	cm_prepare_el3_exit(image_type);
 }

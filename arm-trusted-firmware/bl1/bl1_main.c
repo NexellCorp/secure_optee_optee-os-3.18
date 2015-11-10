@@ -57,6 +57,9 @@ static void __dead2 bl1_run_bl2(entry_point_info_t *bl2_ep)
 	write_spsr_el3(bl2_ep->spsr);
 	write_elr_el3(bl2_ep->pc);
 
+	NOTICE("BL1: Booting BL2\n");
+	print_entry_point_info(bl2_ep);
+
 	eret(bl2_ep->args.arg0,
 		bl2_ep->args.arg1,
 		bl2_ep->args.arg2,
@@ -92,14 +95,6 @@ void bl1_init_bl2_mem_layout(const meminfo_t *bl1_mem_layout,
 
 	/* Remove BL1 RW data from the scope of memory visible to BL2 */
 	*bl2_mem_layout = *bl1_mem_layout;
-
-#if 1
-	INFO(" bl1 - total region = [0x%lx, 0x%lx]\n", bl1_mem_layout->total_base,
-			bl1_mem_layout->total_base + bl1_mem_layout->total_size);
-	INFO(" bl1 - free region = [0x%lx, 0x%lx]\n", bl1_mem_layout->free_base,
-			bl1_mem_layout->free_base + bl1_mem_layout->free_size);
-#endif
-
 	reserve_mem(&bl2_mem_layout->total_base,
 		    &bl2_mem_layout->total_size,
 		    BL1_RAM_BASE,
@@ -182,12 +177,8 @@ void bl1_main(void)
 			 &bl2_ep);
 
 	if (err) {
-		/*
-		 * TODO: print failure to load BL2 but also add a tzwdog timer
-		 * which will reset the system eventually.
-		 */
 		ERROR("Failed to load BL2 firmware.\n");
-		panic();
+		plat_error_handler(err);
 	}
 
 	/*
@@ -202,31 +193,18 @@ void bl1_main(void)
 
 	bl1_plat_set_bl2_ep_info(&bl2_image_info, &bl2_ep);
 	bl2_ep.args.arg1 = (unsigned long)bl2_tzram_layout;
-	NOTICE("BL1: Booting BL2\n");
-	INFO("BL1: BL2 address = 0x%llx\n",
-		(unsigned long long) bl2_ep.pc);
-	INFO("BL1: BL2 spsr = 0x%x\n", bl2_ep.spsr);
-	VERBOSE("BL1: BL2 memory layout address = 0x%llx\n",
-		(unsigned long long) bl2_tzram_layout);
-
 	bl1_run_bl2(&bl2_ep);
 
 	return;
 }
 
 /*******************************************************************************
- * Temporary function to print the fact that BL2 has done its job and BL31 is
- * about to be loaded. This is needed as long as printfs cannot be used
+ * Function called just before handing over to BL31 to inform the user about
+ * the boot progress. In debug mode, also print details about the BL31 image's
+ * execution context.
  ******************************************************************************/
-void display_boot_progress(entry_point_info_t *bl31_ep_info)
+void bl1_print_bl31_ep_info(const entry_point_info_t *bl31_ep_info)
 {
 	NOTICE("BL1: Booting BL3-1\n");
-	INFO("BL1: BL3-1 address = 0x%llx\n",
-		(unsigned long long)bl31_ep_info->pc);
-	INFO("BL1: BL3-1 spsr = 0x%llx\n",
-		(unsigned long long)bl31_ep_info->spsr);
-	INFO("BL1: BL3-1 params address = 0x%llx\n",
-		(unsigned long long)bl31_ep_info->args.arg0);
-	INFO("BL1: BL3-1 plat params address = 0x%llx\n",
-		(unsigned long long)bl31_ep_info->args.arg1);
+	print_entry_point_info(bl31_ep_info);
 }

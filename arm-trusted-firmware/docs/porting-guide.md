@@ -650,6 +650,27 @@ it has restrictions for stack usage and it can use the registers x0 - x17 as
 scratch registers. It should preserve the value in x18 register as it is used
 by the caller to store the return address.
 
+### Function : plat_error_handler()
+
+    Argument : int
+    Return   : void
+
+This API is called when the generic code encounters an error situation from
+which it cannot continue. It allows the platform to perform error reporting or
+recovery actions (for example, reset the system). This function must not return.
+
+The parameter indicates the type of error using standard codes from `errno.h`.
+Possible errors reported by the generic code are:
+
+*   `-EAUTH`: a certificate or image could not be authenticated (when Trusted
+    Board Boot is enabled)
+*   `-ENOENT`: the requested image or certificate could not be found or an IO
+    error was detected
+*   `-ENOMEM`: resources exhausted. Trusted Firmware does not use dynamic
+    memory, so this error is usually an indication of an incorrect array size
+
+The default implementation simply spins.
+
 
 3.  Modifications specific to a Boot Loader stage
 -------------------------------------------------
@@ -1566,11 +1587,6 @@ There are some build flags which can be defined by the platform to control
 inclusion or exclusion of certain BL stages from the FIP image. These flags
 need to be defined in the platform makefile which will get included by the
 build system.
-
-*   **NEED_BL30**
-    This flag if defined by the platform mandates that a BL3-0 binary should
-    be included in the FIP image. The path to the BL3-0 binary can be specified
-    by the `BL30` build option (see build options in the [User Guide]).
 
 *   **NEED_BL33**
     By default, this flag is defined `yes` by the build system and `BL33`
