@@ -33,7 +33,6 @@
 #include <assert.h>
 #include <cci.h>
 #include <debug.h>
-//#include <cci400.h>
 #include <cci.h>
 #include <errno.h>
 #include <gic_v2.h>
@@ -50,8 +49,6 @@ static void nxp5430_power_on_cpu(int cluster, int cpu, int linear_id)
 {
 	unsigned int ctrl_addr;
 	unsigned int data;
-
-//tf_printf("++ %s, cluster:%d, cpu:%d, linear_id:%d\n", __func__, cluster, cpu, linear_id);
 
 	/* Set arm64 mode */
 	ctrl_addr = NXP_CPU_CLUSTERx_CTRL(linear_id);
@@ -79,83 +76,6 @@ static void nxp5430_power_on_cpu(int cluster, int cpu, int linear_id)
 	return;
 }
 
-#if 0
-static void nxp5430_power_on_cluster(int cluster)
-{
-	unsigned int data, temp;
-
-	if (cluster)
-		data = PW_ISO_A53_1_EN;
-	else
-		data = PW_ISO_A53_0_EN;
-
-	/* the cluster has been powered on yet */
-	if (!(mmio_read_32(ACPU_SC_A53_CLUSTER_ISO_STA) & data))
-		return;
-
-	/* Set timer stable interval */
-	mmio_write_32(ACPU_SC_A53_x_MTCMOS_TIMER(cluster), 0xff);
-
-	/* Assert cluster reset */
-	if (cluster)
-		data = SRST_CLUSTER1;
-	else
-		data = SRST_CLUSTER0;
-	mmio_write_32(ACPU_SC_RSTEN, data);
-	do {
-		temp = mmio_read_32(ACPU_SC_RST_STAT);
-	} while ((temp & data) != data);
-
-	if (cluster)
-		data = PW_MTCMOS_EN_A53_1_EN;
-	else
-		data = PW_MTCMOS_EN_A53_0_EN;
-	mmio_write_32(ACPU_SC_A53_CLUSTER_MTCMOS_EN, data);
-	do {
-		temp = mmio_read_32(ACPU_SC_A53_CLUSTER_MTCMOS_STA);
-	} while ((temp & data) != data);
-
-	if (cluster)
-		data = HPM_L2_1_CLKEN;
-	else
-		data = HPM_L2_CLKEN;
-	mmio_write_32(ACPU_SC_CLKEN, data);
-	do {
-		temp = mmio_read_32(ACPU_SC_CLK_STAT);
-	} while ((temp & data) != data);
-
-	if (cluster)
-		data = G_CPU_1_CLKEN;
-	else
-		data = G_CPU_CLKEN;
-	mmio_write_32(ACPU_SC_CLKEN, data);
-	do {
-		temp = mmio_read_32(ACPU_SC_CLK_STAT);
-	} while ((temp & data) != data);
-
-	if (cluster)
-		data = PW_ISO_A53_1_EN;
-	else
-		data = PW_ISO_A53_0_EN;
-	mmio_write_32(ACPU_SC_A53_CLUSTER_ISO_DIS, data);
-	do {
-		temp = mmio_read_32(ACPU_SC_A53_CLUSTER_ISO_STA);
-	} while (temp & data);
-
-	/* Release cluster reset */
-	if (cluster)
-		data = SRST_CLUSTER1;
-	else
-		data = SRST_CLUSTER0;
-	mmio_write_32(ACPU_SC_RSTDIS, data);
-	do {
-		temp = mmio_read_32(ACPU_SC_RST_STAT);
-	} while (data & temp);
-
-	return;
-}
-#endif
-
 /*******************************************************************************
  * Hikey handler called when an affinity instance is about to be turned on. The
  * level and mpidr determine the affinity instance.
@@ -172,11 +92,6 @@ int32_t nxp5430_affinst_on(uint64_t mpidr,
 	linear_id = platform_get_core_pos(mpidr);
 	cluster = (mpidr & MPIDR_CLUSTER_MASK) >> MPIDR_AFF1_SHIFT;
 	cpu = mpidr & MPIDR_CPU_MASK;
-
-#if 0
-tf_printf("++ %s - cluster: %d, cpu: %d, linear_id: %ld\n",
-	__func__, cluster, cpu, linear_id);
-#endif
 
 	VERBOSE("#%s, mpidr:%llx, afflvl:%x, state:%x\n", __func__, mpidr, afflvl, state);
 
@@ -204,10 +119,6 @@ tf_printf("++ %s - cluster: %d, cpu: %d, linear_id: %ld\n",
 		dsb();
 
 		break;
-
-	case MPIDR_AFFLVL1:
-//		nxp5430_power_on_cluster(cluster);
-		break;
 	}
 
 	return PSCI_E_SUCCESS;
@@ -223,8 +134,6 @@ tf_printf("++ %s - cluster: %d, cpu: %d, linear_id: %ld\n",
 void nxp5430_affinst_on_finish(uint32_t afflvl, uint32_t state)
 {
 	uint32_t linear_id;
-
-//tf_printf("++ %s\n", __func__);
 
 	/* Get the mpidr for this cpu */
 	linear_id = plat_my_core_pos();
@@ -252,8 +161,6 @@ static int32_t nxp5430_do_plat_actions(uint32_t afflvl, uint32_t state)
 {
 	uint32_t max_phys_off_afflvl;
 
-INFO("++ %s\n", __func__);
-
 	assert(afflvl <= MPIDR_AFFLVL1);
 
 	if (state != PSCI_STATE_OFF)
@@ -274,8 +181,6 @@ INFO("++ %s\n", __func__);
 
 static void nxp5430_affinst_off(uint32_t afflvl, uint32_t state)
 {
-tf_printf("++ %s\n", __func__);
-
 	if (nxp5430_do_plat_actions(afflvl, state) == -EAGAIN)
 		return;
 
@@ -295,8 +200,6 @@ static void nxp5430_affinst_suspend(uint64_t sec_entrypoint,
 				  uint32_t state)
 {
 	uint32_t linear_id;
-
-tf_printf("++ %s\n", __func__);
 
 	/* Get the mpidr for this cpu */
 	linear_id = plat_my_core_pos();
@@ -323,8 +226,6 @@ static void nxp5430_affinst_suspend_finish(uint32_t afflvl,
 {
 	uint32_t linear_id;
 
-tf_printf("++ %s\n", __func__);
-
 	/* Get the mpidr for this cpu */
 	linear_id = plat_my_core_pos();
 
@@ -349,10 +250,6 @@ tf_printf("++ %s\n", __func__);
 static void __dead2 nxp5430_system_reset(void)
 {
 	VERBOSE("%s: reset system\n", __func__);
-tf_printf("%s: reset system\n", __func__);
-
-	/* Send the system reset request */
-//	mmio_write_32(AO_SC_SYS_STAT0, 0x48698284);
 
 	wfi();
 	panic();
