@@ -57,11 +57,8 @@ static void nxp5430_power_on_cpu(int cluster, int cpu, int linear_id)
 	data |= (1 << NXP_CPU_CLUSTERx_AARCH64_SHIFT(linear_id));
 	mmio_write_32(ctrl_addr, data);
 
-#if 1
 	mmio_write_32(NXP_CPU_RESET_ENB_CTRL, 1);
-
 	mmio_write_32(NXP_CPU_PWRDOWN_REQ_CTRL, (1 << linear_id));
-
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL,   (1 << linear_id));
 
 	/* Checking WFI of cpus */
@@ -71,7 +68,6 @@ static void nxp5430_power_on_cpu(int cluster, int cpu, int linear_id)
 		while( mmio_read_32(NXP_TIEOFF_REG(90)) & (1 << cpu) );
 
 	mmio_write_32(NXP_CPU_PWRUP_REQ_CTRL, 0);
-#endif
 
 	return;
 }
@@ -87,7 +83,7 @@ int32_t nxp5430_affinst_on(uint64_t mpidr,
 {
 	int cpu, cluster;
 	uint32_t linear_id;
-	uint32_t reg, temp;
+	uint32_t temp;
 
 	linear_id = platform_get_core_pos(mpidr);
 	cluster = (mpidr & MPIDR_CLUSTER_MASK) >> MPIDR_AFF1_SHIFT;
@@ -109,15 +105,6 @@ int32_t nxp5430_affinst_on(uint64_t mpidr,
 		} while (mmio_read_32(NXP_CPUx_RVBARADDR(linear_id)) != temp);
 
 		nxp5430_power_on_cpu(cluster, cpu, linear_id);
-
-		reg = ((0x1 << linear_id) << 16) | (0x1<<15);
-		gicd_write_sgir(GICD_BASE, reg);
-		dsb();
-
-		reg = ((0x1 << linear_id) << 16);
-		gicd_write_sgir(GICD_BASE, reg);
-		dsb();
-
 		break;
 	}
 
