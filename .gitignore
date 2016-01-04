@@ -1,0 +1,7 @@
+*.o
+*.dmp
+*.elf
+*.o.cmd
+*.ko
+*.map
+*.lds

@@ -244,6 +244,8 @@ static ssize_t read_random(void *in, size_t rsize)
 		printf("read: requested %zu bytes, got %zd\n",
 		       rsize, s);
 	}
+
+    return 0;
 }
 
 static long get_current_time(struct timespec *ts)
@@ -252,6 +254,8 @@ static long get_current_time(struct timespec *ts)
 		perror("clock_gettime");
 		exit(1);
 	}
+
+    return 0;
 }
 
 static uint64_t timespec_diff_ns(struct timespec *start, struct timespec *end)

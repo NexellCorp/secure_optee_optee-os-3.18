@@ -42,10 +42,10 @@
 #include <unistd.h>
 
 #include <teec_trace.h>
-#include <teec_rpc.h>
-#include <teec_ta_load.h>
-#include <tee_supp_fs.h>
-#include <teec.h>
+#include "teec_rpc.h"
+#include "teec_ta_load.h"
+#include "tee_supp_fs.h"
+#include "teec.h"
 
 #define TEE_RPC_BUFFER_NUMBER 5
 

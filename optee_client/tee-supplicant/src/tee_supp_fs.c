@@ -31,8 +31,8 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <string.h>
-#include <tee_supp_fs.h>
-#include <handle.h>
+#include "tee_supp_fs.h"
+#include "handle.h"
 
 /*
  * Operations and defines shared with TEE.

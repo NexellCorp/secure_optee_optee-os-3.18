@@ -33,7 +33,7 @@
 #include <pthread.h>
 
 #include <teec_trace.h>
-#include <teec_ta_load.h>
+#include "teec_ta_load.h"
 
 #ifndef TEEC_LOAD_PATH
 #define TEEC_LOAD_PATH "/lib"
