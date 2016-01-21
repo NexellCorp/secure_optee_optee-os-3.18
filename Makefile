@@ -222,10 +222,10 @@ clean-lloader:
 # each time it is run
 
 LINUX = linux/arch/arm64/boot/Image
-DTB = nexell/s5p6818-asb-optee.dtb
+DTB = nexell/s5p6818-drone-optee.dtb
 DTB2 = linux/arch/arm64/boot/dts/$(DTB)
 # Config fragments to merge with the default kernel configuration
-KCONFIGS += linux/arch/arm64/configs/s5p6818_asb_optee_linux_defconfig
+KCONFIGS += linux/arch/arm64/configs/s5p6818_drone_optee_linux_defconfig
 
 ifneq ($(filter all build-linux,$(MAKECMDGOALS)),)
 linux-build-deps += build-dtb
@@ -235,7 +235,7 @@ endif
 build-linux:: $(linux-build-deps) $(aarch64-linux-gnu-gcc)
 build-linux $(LINUX):: linux/.config
 	$(ECHO) '  BUILD   build-linux'
-	$(Q)flock .linuxbuildinprogress $(MAKE) -C linux ARCH=arm64 LOCALVERSION= Image
+	$(Q)flock .linuxbuildinprogress $(MAKE) -C linux ARCH=arm64 LOCALVERSION= -j9 Image
 
 build-dtb:: $(aarch64-linux-gnu-gcc)
 build-dtb $(DTB):: linux/.config
