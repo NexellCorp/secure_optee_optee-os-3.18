@@ -296,8 +296,15 @@ clean-initramfs:
 
 SINGLE_IMG = singleimage.bin
 
+ifneq ($(filter all build-fip,$(MAKECMDGOALS)),)
+singleimage-deps += build-fip
+endif
+ifneq ($(filter all build-fip,$(MAKECMDGOALS)),)
+singleimage-deps += build-lloader
+endif
+
 .PHONY: build-singleimage
-#build-singleimage:: $(singleimage-deps)
+build-singleimage:: $(singleimage-deps)
 build-singleimage:: ./gen_singleimage.sh
 	$(ECHO) "  GEN    $(SINGLE_IMG)"
 	$(Q)./gen_singleimage.sh
