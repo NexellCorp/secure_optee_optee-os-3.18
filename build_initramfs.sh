@@ -24,6 +24,7 @@ if [ ! -f ./buildroot/out/ramdisk.gz ] ; then
 
 	cd ../
 	./scripts/mk_ramfs.sh -r ./out/rootfs -c ./out
+	mv -f ramdisk.gz out/ramdisk.gz
 fi
 
 cd ${TOP}

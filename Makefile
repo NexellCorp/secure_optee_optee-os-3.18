@@ -229,7 +229,9 @@ DTB2 = linux/arch/arm64/boot/dts/$(DTB)
 KCONFIGS += linux/arch/arm64/configs/s5p6818_drone_optee_linux_defconfig
 
 ifneq ($(filter all build-linux,$(MAKECMDGOALS)),)
-linux-build-deps += build-dtb
+#linux-build-deps += build-dtb
+# add bl33 dependency for patch parallel build breaks... maybe prototype problem
+linux-build-deps += build-dtb build-bl33
 endif
 
 .PHONY: build-linux
