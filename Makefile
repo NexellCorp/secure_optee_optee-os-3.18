@@ -20,7 +20,7 @@ _all:
 	$(Q)if [ ! -L u-boot ] ; then ln -s ../../bootloader/u-boot-2014.07 u-boot ; fi
 	$(Q)$(MAKE) all $(filter-out _all,$(MAKECMDGOALS))
 
-all: build-lloader build-fip build-linux build-initramfs
+all: build-lloader build-fip build-linux build-initramfs build-singleimage
 
 pre_clean:
 	$(Q)if [ ! -L linux ] ; then ln -s ../../kernel/kernel-3.18 linux ; fi
@@ -34,6 +34,7 @@ post_clean:
 clean: clean-bl1-bl2-bl31-fip clean-bl33 clean-lloader
 clean: clean-linux-dtb clean-initramfs clean-optee-linuxdriver
 clean: clean-optee-client clean-bl32 clean-aes-perf clean-helloworld
+clean: clean-singleimage
 
 cleaner: pre_clean clean post_clean
 
@@ -287,6 +288,25 @@ build-initramfs:: ./build_initramfs.sh
 clean-initramfs:
 	$(ECHO) "  CLEAN  $@"
 	$(Q)rm -f $(INITRAMFS)
+
+
+#
+# build single binary
+#
+
+SINGLE_IMG = singleimage.bin
+
+.PHONY: build-singleimage
+#build-singleimage:: $(singleimage-deps)
+build-singleimage:: ./gen_singleimage.sh
+	$(ECHO) "  GEN    $(SINGLE_IMG)"
+	$(Q)./gen_singleimage.sh
+
+clean-singleimage:
+	$(ECHO) "  CLEAN  $@"
+	$(Q)rm -f $(SINGLE_IMG)
+
+
 
 #
 # OP-TEE Linux driver
