@@ -55,11 +55,9 @@ reset:
 	str	r0, [r8]		@ download mode (1:usb,2:uart,0:boot)
 
 	@ copy fip image
-	ldr	r8, =(0x7fdffff0)
-	ldr	r0, [r8]		@ src
-	ldr	r3, [r8, #4]		@ src size
-	ldr	r1, [r8, #8]		@ dst
-	add	r2, r0, r3		@ end of src
+	ldr	r0, =(0x7fc00000)	@ src
+	ldr	r1, =(0x40000000)	@ dst
+	ldr	r2, =(0x7fe00000)	@ end of src
 copy_loop_text:
 	ldmia	r0!, {r3-r10}
 	stmia	r1!, {r3-r10}

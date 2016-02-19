@@ -3,8 +3,10 @@
 VERBOSE=false
 
 TOP=`pwd`
-RESULT=${TOP}/build_images
+RESULT=${TOP}/result
 
+
+MERGE_TYPE=fixed
 
 BASE_ADDR=0x7fe00000
 LOAD_ADDR=0x40000000
@@ -58,25 +60,33 @@ function parse_args()
 
 function write_header()
 {
-	FIP_SIZE=`stat --printf="%s" $FIP_FILE`
-	LL_SIZE=`stat --printf="%s" $LLOADER_FILE`
+        if [ ${MERGE_TYPE} != "fixed" ]; then
+		FIP_SIZE=`stat --printf="%s" $FIP_FILE`
+		LL_SIZE=`stat --printf="%s" $LLOADER_FILE`
 
-	FIP_START=$(($BASE_ADDR + 0x800 + $LL_SIZE))
-	#echo -e $(printf "%08x" $xxx)
+		FIP_START=$(($BASE_ADDR + 0x800 + $LL_SIZE))
+		#echo -e $(printf "%08x" $xxx)
 
-	./rev.sh $(printf "%08x" $FIP_START) | xxd -r -p >  ${HEADER_FILE}
-	./rev.sh $(printf "%08x" $FIP_SIZE)  | xxd -r -p >> ${HEADER_FILE}
-	./rev.sh $(printf "%08x" $LOAD_ADDR) | xxd -r -p >> ${HEADER_FILE}
-	./rev.sh $(printf "%08x" 0x0) | xxd -r -p >> ${HEADER_FILE}
+		./rev.sh $(printf "%08x" $FIP_START) | xxd -r -p >  ${HEADER_FILE}
+		./rev.sh $(printf "%08x" $FIP_SIZE)  | xxd -r -p >> ${HEADER_FILE}
+		./rev.sh $(printf "%08x" $LOAD_ADDR) | xxd -r -p >> ${HEADER_FILE}
+		./rev.sh $(printf "%08x" 0x0) | xxd -r -p >> ${HEADER_FILE}
+	fi
 }
 
 function merge_bins()
 {
-	dd if=/dev/zero ibs=2048 count=1 of=${DUMMY_FILE}
-	cat ${HEADER_FILE}  >  ${SINGLE_FILE}
-	cat ${DUMMY_FILE}   >> ${SINGLE_FILE}
-	cat ${LLOADER_FILE} >> ${SINGLE_FILE}
-	cat ${FIP_FILE}     >> ${SINGLE_FILE}
+        if [ ${MERGE_TYPE} == "fixed" ]; then
+		dd if=/dev/zero ibs=1024 count=2050 of=${SINGLE_FILE}
+		dd if=${FIP_FILE} of=${SINGLE_FILE} conv=notrunc
+		cat ${LLOADER_FILE} >> ${SINGLE_FILE}
+	else
+		dd if=/dev/zero ibs=2048 count=1 of=${DUMMY_FILE}
+		cat ${HEADER_FILE}  >  ${SINGLE_FILE}
+		cat ${DUMMY_FILE}   >> ${SINGLE_FILE}
+		cat ${LLOADER_FILE} >> ${SINGLE_FILE}
+		cat ${FIP_FILE}     >> ${SINGLE_FILE}
+        fi
 }
 
 parse_args $@
